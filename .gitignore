@@ -13,7 +13,7 @@
 # Models and Textures
 *.ply
 *.obj
-*.pnh
+*.png
 *.jpeg
 *.jpg
 *.exr

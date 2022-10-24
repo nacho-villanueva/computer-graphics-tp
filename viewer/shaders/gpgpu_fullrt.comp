@@ -358,7 +358,7 @@ vec4 specularLighting(vec4 color, vec4 v, vec4 n, vec4 lightDirection)
 
     float f = (fs + fp) / 2;
 
-    return  f * color * max(pow(dot(n, hv), shininess), 0) * lightIntensity; // TODO< Add phong exponent
+    return  f * color * pow(max(dot(n, hv), 0), shininess) * lightIntensity; // TODO< Add phong exponent
 }
 
 
