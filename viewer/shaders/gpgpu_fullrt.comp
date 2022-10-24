@@ -403,7 +403,7 @@ vec4 specularLighting(vec4 color, vec4 v, vec4 n, vec4 lightDirection)
 
         float num = f * micro_facet_normal(cos_thetah, alpha2) * G1(cos_thetai, alpha2) * G1(cos_thetao, alpha2);
         float den = 4 * cos_thetai * cos_thetao; 
-        return (num / den) * color * lightIntensity;
+        return (num / den) * color * lightIntensity; // TODO maybe change num and denom for AIV?
     }
 }
 
