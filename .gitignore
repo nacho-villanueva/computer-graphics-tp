@@ -10,6 +10,16 @@
 *.dll
 *.dylib
 
+# Models and Textures
+*.ply
+*.obj
+*.pnh
+*.jpeg
+*.jpg
+*.exr
+*.tif
+*.swatch
+
 # Qt-es
 object_script.*.Release
 object_script.*.Debug
