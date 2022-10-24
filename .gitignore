@@ -11,10 +11,13 @@
 *.dylib
 
 # Models and Textures
+**/textures/**
+**/models/**
 *.ply
 *.obj
 *.png
 *.jpeg
+*.JPG
 *.jpg
 *.exr
 *.tif
