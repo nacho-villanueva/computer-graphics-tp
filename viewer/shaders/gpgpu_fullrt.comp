@@ -394,6 +394,7 @@ vec4 specularLighting(vec4 color, vec4 v, vec4 n, vec4 lightDirection)
     }
     else
     {
+        // Shininess to alpha conversion from https://graphicscompendium.com/gamedev/15-pbr
         float alpha = sqrt(2 / (2 + shininess));
         float alpha2 = pow(alpha, 2);
         float cos_thetah = dot(hv, n);
