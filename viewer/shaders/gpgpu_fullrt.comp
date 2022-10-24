@@ -150,9 +150,9 @@ vec4 interpolateColor(hitinfo_t h)
 vec4 interpolateNormal(hitinfo_t h)
 {
     if(vertices.length() > 0) {
-        vec4 v0 = vertices[indices[h.hit_vptr]];
-		vec4 v1 = vertices[indices[h.hit_vptr + 1]];
-		vec4 v2 = vertices[indices[h.hit_vptr + 2]];
+        vec4 v0 = normals[indices[h.hit_vptr]];
+		vec4 v1 = normals[indices[h.hit_vptr + 1]];
+		vec4 v2 = normals[indices[h.hit_vptr + 2]];
 		return normalize(h.t.w * v0 + h.t.y * v1 + h.t.z * v2);
     }
     else return vec4(1.0, 0.0, 0.0, 1.0);
@@ -345,6 +345,14 @@ vec4 specularLighting(vec4 color, vec4 v, vec4 n, vec4 lightDirection)
 {
     vec4 hv = halfVector(v, lightDirection);
 
+    vec4 f = fresnelTerm(hv, lightDirection);
+
+    return  f * color * pow(max(dot(n, hv), 0), shininess) * lightIntensity; // TODO< Add phong exponent
+}
+
+
+vec4 fresnelTerm(vec4 hv, vec4 lightDirection)
+{
     float cos_theta = dot(hv, lightDirection);
     float sin2_theta = 1 - (cos_theta * cos_theta); 
 
@@ -357,10 +365,7 @@ vec4 specularLighting(vec4 color, vec4 v, vec4 n, vec4 lightDirection)
     float fp = sqrt_fp * sqrt_fp;
 
     float f = (fs + fp) / 2;
-
-    return  f * color * pow(max(dot(n, hv), 0), shininess) * lightIntensity; // TODO< Add phong exponent
 }
-
 
 // Local illumination related functions. TODO
 
