@@ -149,8 +149,13 @@ vec4 interpolateColor(hitinfo_t h)
 
 vec4 interpolateNormal(hitinfo_t h)
 {
-	// TODO
-	return vec4(1,0,0,1);
+    if(vertices.length() > 0) {
+        vec4 v0 = vertices[indices[h.hit_vptr]];
+		vec4 v1 = vertices[indices[h.hit_vptr + 1]];
+		vec4 v2 = vertices[indices[h.hit_vptr + 2]];
+		return normalize(h.t.w * v0 + h.t.y * v1 + h.t.z * v2);
+    }
+    else return vec4(1.0, 0.0, 0.0, 1.0);
 }
 
 // BVH-related functions:
@@ -333,19 +338,19 @@ vec4 diffuseLighting(vec4 color, vec4 n, vec4 lightDirection)
 
 vec4 halfVector(vec4 v, vec4 L) 
 {
-    return (v + L) / length(v + L);
+    return normalize(v + L);
 }
 
 vec4 specularLighting(vec4 color, vec4 v, vec4 n, vec4 lightDirection)
 {
     vec4 hv = halfVector(v, lightDirection);
 
-    float cos_theta = dot(hv, lightDirection) / (length(hv) * length(lightDirection));
+    float cos_theta = dot(hv, lightDirection);
     float sin2_theta = 1 - (cos_theta * cos_theta); 
 
     float ci = sqrt((eta * eta) - sin2_theta); // TODO: Check if this is correct 
 
-    float sqrt_fs = ((cos_theta - ci) / (cos_theta + ci));
+    float sqrt_fs = (cos_theta - ci) / (cos_theta + ci);
     float fs = sqrt_fs * sqrt_fs;
 
     float sqrt_fp = (eta * eta * cos_theta - ci) / (eta * eta * cos_theta + ci);
@@ -367,10 +372,10 @@ vec4 directIllumination(vec4 color, vec4 p, vec4 n, vec4 v)
 	// n: normal at intersection point, xyzw
 	// v: incoming viewing direction. Points towards the eye.
 
-    vec4 lightDirection = normalize(vec4(lightPosition.x, lightPosition.y, lightPosition.z, p.w) - p);
+    vec4 lightDirection = normalize(vec4(lightPosition, p.w) - p);
 
-	// return ambientLighting(color) + diffuseLighting(color, n, lightDirection) + specularLighting(color, v, n, lightDirection);
-	return ambientLighting(color) + specularLighting(color, v, n, lightDirection);
+	// return ambientLighting(color) + diffuseLighting(color, n, lightDirection);
+	return ambientLighting(color) + diffuseLighting(color, n, lightDirection) + specularLighting(color, v, n, lightDirection) ;
 
 }
 
