@@ -341,17 +341,33 @@ vec4 halfVector(vec4 v, vec4 L)
     return normalize(v + L);
 }
 
-vec4 specularLighting(vec4 color, vec4 v, vec4 n, vec4 lightDirection)
+bool chi_0_halfpi (float cos_theta) 
 {
-    vec4 hv = halfVector(v, lightDirection);
-
-    vec4 f = fresnelTerm(hv, lightDirection);
-
-    return  f * color * pow(max(dot(n, hv), 0), shininess) * lightIntensity; // TODO< Add phong exponent
+    return 0 <= cos_theta;
 }
 
+float micro_facet_normal(float cos_theta, float alpha2)
+{
+    if (cos_theta < 0)
+    {
+        return 0;
+    }
 
-vec4 fresnelTerm(vec4 hv, vec4 lightDirection)
+    float term_1 = M_1_PI * pow(cos_theta, -4);
+
+    float tan2_theta = pow(cos_theta, -2) - 1;
+    float term_2 = alpha2 / pow(alpha2 + tan2_theta, 2);
+
+    return term_1 * term_2;
+}
+
+float G1(float cos_theta, float alpha2) 
+{
+    float tan2_theta = pow(cos_theta, -2) - 1;
+    return 2 / (1 + sqrt(1 + alpha2 * tan2_theta));
+}
+
+float fresnelTerm(vec4 hv, vec4 lightDirection)
 {
     float cos_theta = dot(hv, lightDirection);
     float sin2_theta = 1 - (cos_theta * cos_theta); 
@@ -364,7 +380,30 @@ vec4 fresnelTerm(vec4 hv, vec4 lightDirection)
     float sqrt_fp = (eta * eta * cos_theta - ci) / (eta * eta * cos_theta + ci);
     float fp = sqrt_fp * sqrt_fp;
 
-    float f = (fs + fp) / 2;
+    return (fs + fp) / 2;
+}
+
+vec4 specularLighting(vec4 color, vec4 v, vec4 n, vec4 lightDirection)
+{
+    vec4 hv = halfVector(v, lightDirection);
+    float f = fresnelTerm(hv, lightDirection);
+
+    if (blinnPhong)
+    {
+        return  f * color * pow(max(dot(n, hv), 0), shininess) * lightIntensity; // TODO< Add phong exponent
+    }
+    else
+    {
+        float alpha = sqrt(2 / (2 + shininess));
+        float alpha2 = pow(alpha, 2);
+        float cos_thetah = dot(hv, n);
+        float cos_thetai = dot(lightDirection, n);
+        float cos_thetao = dot(v, n);
+
+        float num = f * micro_facet_normal(cos_thetah, alpha2) * G1(cos_thetai, alpha2) * G1(cos_thetao, alpha2);
+        float den = 4 * cos_thetai * cos_thetao; 
+        return (num / den) * color * lightIntensity;
+    }
 }
 
 // Local illumination related functions. TODO
@@ -379,9 +418,7 @@ vec4 directIllumination(vec4 color, vec4 p, vec4 n, vec4 v)
 
     vec4 lightDirection = normalize(vec4(lightPosition, p.w) - p);
 
-	// return ambientLighting(color) + diffuseLighting(color, n, lightDirection);
-	return ambientLighting(color) + diffuseLighting(color, n, lightDirection) + specularLighting(color, v, n, lightDirection) ;
-
+    return ambientLighting(color) + diffuseLighting(color, n, lightDirection) + specularLighting(color, v, n, lightDirection) ;
 }
 
 const int MAX_TRACE = 3;
