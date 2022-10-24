@@ -23,7 +23,7 @@ uniform vec3 center;
 
 #define M_1_PI 0.31830988618
 
-#define Ka 0.05
+#define Ka 0.01
 #define Kd 0.3
 
 struct hitinfo_t {
@@ -320,6 +320,43 @@ bool isIntersected(vec4 origin, vec4 dir)
     return intersectGround(origin, dir, dist) || intersectBVH(origin, dir);
 }
 
+vec4 ambientLighting(vec4 color)
+{
+    return Ka * color * lightIntensity;
+}
+
+vec4 diffuseLighting(vec4 color, vec4 n, vec4 lightDirection) 
+{
+    float maxL = dot(n, lightDirection);
+    return Kd * color * max(maxL, 0) * lightIntensity;
+}
+
+vec4 halfVector(vec4 v, vec4 L) 
+{
+    return (v + L) / length(v + L);
+}
+
+vec4 specularLighting(vec4 color, vec4 v, vec4 n, vec4 lightDirection)
+{
+    vec4 hv = halfVector(v, lightDirection);
+
+    float cos_theta = dot(hv, lightDirection) / (length(hv) * length(lightDirection));
+    float sin2_theta = 1 - (cos_theta * cos_theta); 
+
+    float ci = sqrt((eta * eta) - sin2_theta); // TODO: Check if this is correct 
+
+    float sqrt_fs = ((cos_theta - ci) / (cos_theta + ci));
+    float fs = sqrt_fs * sqrt_fs;
+
+    float sqrt_fp = (eta * eta * cos_theta - ci) / (eta * eta * cos_theta + ci);
+    float fp = sqrt_fp * sqrt_fp;
+
+    float f = (fs + fp) / 2;
+
+    return  f * color * max(pow(dot(n, hv), shininess), 0) * lightIntensity; // TODO< Add phong exponent
+}
+
+
 // Local illumination related functions. TODO
 
 vec4 directIllumination(vec4 color, vec4 p, vec4 n, vec4 v)
@@ -329,8 +366,12 @@ vec4 directIllumination(vec4 color, vec4 p, vec4 n, vec4 v)
 	// p: coordinates of intersection point, xyzw
 	// n: normal at intersection point, xyzw
 	// v: incoming viewing direction. Points towards the eye.
-	// TODO
-	return vec4(0.4, 0.4, 0.4, 1.0);
+
+    vec4 lightDirection = normalize(vec4(lightPosition.x, lightPosition.y, lightPosition.z, p.w) - p);
+
+	// return ambientLighting(color) + diffuseLighting(color, n, lightDirection) + specularLighting(color, v, n, lightDirection);
+	return ambientLighting(color) + specularLighting(color, v, n, lightDirection);
+
 }
 
 const int MAX_TRACE = 3;
