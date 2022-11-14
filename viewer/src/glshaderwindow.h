@@ -42,6 +42,7 @@ public slots:
     void setWindowSize(const QString& size);
     void cookTorranceClicked();
     void blinnPhongClicked();
+    void inderectLightingClicked();
     void transparentClicked();
     void opaqueClicked();
     void updateLightIntensity(int lightSliderValue);
@@ -99,6 +100,7 @@ private:
     // Parameters controlled by UI
     bool blinnPhong;
     bool transparent;
+    bool indirectLighting;
     float eta;
     float lightIntensity;
     float shininess;

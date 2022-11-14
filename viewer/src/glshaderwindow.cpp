@@ -8,6 +8,7 @@
 // Buttons/sliders for User interface:
 #include <QGroupBox>
 #include <QRadioButton>
+#include <QCheckBox>
 #include <QSlider>
 #include <QLabel>
 // Layouts for User interface
@@ -29,7 +30,7 @@ glShaderWindow::glShaderWindow(QWindow *parent)
       g_vertices(0), g_normals(0), g_texcoords(0), g_colors(0), g_indices(0),
       gpgpu_vertices(0), gpgpu_normals(0), gpgpu_texcoords(0), gpgpu_colors(0), gpgpu_indices(0),
       environmentMap(0), texture(0), permTexture(0), pixels(0), mouseButton(Qt::NoButton), auxWidget(0),
-      isGPGPU(true), hasComputeShaders(true), blinnPhong(true), transparent(true), eta(1.5), lightIntensity(1.0f), shininess(50.0f), lightDistance(5.0f), groundDistance(0.78),
+      isGPGPU(true), hasComputeShaders(true), indirectLighting(true), blinnPhong(true), transparent(true), eta(1.5), lightIntensity(1.0f), shininess(50.0f), lightDistance(5.0f), groundDistance(0.78),
       shadowMap_fboId(0), shadowMap_rboId(0), shadowMap_textureId(0), fullScreenSnapshots(false), computeResult(0), 
       m_indexBuffer(QOpenGLBuffer::IndexBuffer), ground_indexBuffer(QOpenGLBuffer::IndexBuffer)
 {
@@ -175,6 +176,12 @@ void glShaderWindow::cookTorranceClicked()
     renderNow();
 }
 
+void glShaderWindow::inderectLightingClicked()
+{
+    indirectLighting = !indirectLighting;
+    renderNow();
+}
+
 void glShaderWindow::blinnPhongClicked()
 {
     blinnPhong = true;
@@ -223,6 +230,7 @@ QWidget *glShaderWindow::makeAuxWindow()
     QGroupBox *groupBox = new QGroupBox("Specular Model selection");
     QRadioButton *radio1 = new QRadioButton("Blinn-Phong");
     QRadioButton *radio2 = new QRadioButton("Cook-Torrance");
+
     if (blinnPhong) radio1->setChecked(true);
     else radio1->setChecked(true);
     connect(radio1, SIGNAL(clicked()), this, SLOT(blinnPhongClicked()));
@@ -299,6 +307,18 @@ QWidget *glShaderWindow::makeAuxWindow()
     hboxEta->addWidget(etaLabelValue);
     outer->addLayout(hboxEta);
     outer->addWidget(etaSlider);
+
+    // Toggle Indirect Lighting
+    QLabel* ilLabel = new QLabel("Indirect Lighting: ");
+    QCheckBox* ilCheckbox = new QCheckBox(true);
+    QHBoxLayout *hboxIl = new QHBoxLayout;
+
+    connect(ilCheckbox, SIGNAL(clicked()), this, SLOT(inderectLightingClicked()));
+
+    hboxIl->addWidget(ilLabel);
+    hboxIl->addWidget(ilCheckbox);
+    outer->addLayout(hboxIl);
+
 
     auxWidget->setLayout(outer);
     return auxWidget;
@@ -1023,6 +1043,7 @@ void glShaderWindow::render()
         compute_program->setUniformValue("lightPosition", lightPosition);
         compute_program->setUniformValue("lightIntensity", 1.0f);
         compute_program->setUniformValue("blinnPhong", blinnPhong);
+        compute_program->setUniformValue("renderIndirectLighting", indirectLighting);
         compute_program->setUniformValue("transparent", transparent);
         compute_program->setUniformValue("lightIntensity", lightIntensity);
         compute_program->setUniformValue("shininess", shininess);
