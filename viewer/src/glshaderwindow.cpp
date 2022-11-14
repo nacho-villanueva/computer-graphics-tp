@@ -310,7 +310,8 @@ QWidget *glShaderWindow::makeAuxWindow()
 
     // Toggle Indirect Lighting
     QLabel* ilLabel = new QLabel("Indirect Lighting: ");
-    QCheckBox* ilCheckbox = new QCheckBox(true);
+    QCheckBox* ilCheckbox = new QCheckBox();
+    ilCheckbox->setChecked(true);
     QHBoxLayout *hboxIl = new QHBoxLayout;
 
     connect(ilCheckbox, SIGNAL(clicked()), this, SLOT(inderectLightingClicked()));

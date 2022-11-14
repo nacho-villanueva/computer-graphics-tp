@@ -419,8 +419,7 @@ vec4 directIllumination(vec4 color, vec4 p, vec4 n, vec4 v)
 	// v: incoming viewing direction. Points towards the eye.
 
     vec4 lightDirection = normalize(vec4(lightPosition, p.w) - p);
-
-    if(dot(n, lightDirection) < 0 || isIntersected(p + n * 0.1, lightDirection)) {
+    if(dot(n, lightDirection) < 0 || isIntersected(p + n * 0.01, lightDirection)) {
         return ambientLighting(color);
     }
 
@@ -474,36 +473,39 @@ vec4 trace(vec4 origin, vec4 dir)
 
     float specular_factor, LdN;
 
-	// if (firstIntersection(origin, dir, hl)) {
-	// 	getLocal(origin, dir, hl, localColor, hit, N);
-	// 	return directIllumination(localColor, hit, N, -dir);
-	// }
+    if(renderIndirectLighting) {
+        while(sp < MAX_TRACE && firstIntersection(stack[sp].origin, stack[sp].dir, stack[sp].h)) {
+            if(sp > 0) {
+                stack[sp].origin = stack[sp-1].hit;
+                stack[sp].dir = reflect(stack[sp-1].dir, stack[sp-1].N);
+            }
 
-    while(sp < MAX_TRACE && firstIntersection(stack[sp].origin, stack[sp].dir, stack[sp].h)) {
-        if(sp > 0) {
-            stack[sp].origin = stack[sp-1].hit;
-            stack[sp].dir = reflect(stack[sp-1].dir, stack[sp-1].N);
+            getLocal(stack[sp].origin, stack[sp].dir, stack[sp].h, stack[sp].localColor, stack[sp].hit, stack[sp].N);
+            // stack[sp].Ld = normalize(vec4(lightPosition, p.w) - p); // TODO: Check if this can be optimized; Is this necessary?
+            sp++;
         }
 
-        getLocal(stack[sp].origin, stack[sp].dir, stack[sp].h, stack[sp].localColor, stack[sp].hit, stack[sp].N);
-        // stack[sp].Ld = normalize(vec4(lightPosition, p.w) - p); // TODO: Check if this can be optimized; Is this necessary?
-        sp++;
-    }
-
-    if(sp == 0) {
-        if(renderIndirectLighting)
+        if(sp == 0)
             return vec4(0, 0, 0, 1);
-        else
-            return vec4(255, 0, 0, 1);
+
+        vec4 currentColor = vec4(0, 0, 0, 1);
+
+        for(;sp >= 0; sp--) {
+            currentColor = directIllumination(stack[sp].localColor, stack[sp].hit, stack[sp].N, -stack[sp].dir) + currentColor;
+        }
+
+        return currentColor;
     }
 
-    vec4 currentColor = vec4(0, 0, 0, 1);
-
-    for(;sp >= 0; sp--) {
-        currentColor = directIllumination(stack[sp].localColor, stack[sp].hit, stack[sp].N, -stack[sp].dir) + currentColor * 0.8;
+    else {
+        if (firstIntersection(origin, dir, hl)) {
+		    getLocal(origin, dir, hl, localColor, hit, N);
+		    return directIllumination(localColor, hit, N, -dir);
+	    }
+        return vec4(0, 0, 0, 1);
     }
 
-    return currentColor;
+    
 }
 
 layout (local_size_x = 8, local_size_y = 8) in;
