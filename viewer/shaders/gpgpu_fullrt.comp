@@ -24,7 +24,7 @@ uniform vec3 center;
 
 #define M_1_PI 0.31830988618
 
-#define Ka 0.01
+#define Ka 0.05
 #define Kd 0.3
 
 struct hitinfo_t {
@@ -473,16 +473,17 @@ vec4 trace(vec4 origin, vec4 dir)
 
     float specular_factor, LdN;
 
+    // TP 2
     if(renderIndirectLighting) {
         while(sp < MAX_TRACE && firstIntersection(stack[sp].origin, stack[sp].dir, stack[sp].h)) {
-            if(sp > 0) {
+            getLocal(stack[sp].origin, stack[sp].dir, stack[sp].h, stack[sp].localColor, stack[sp].hit, stack[sp].N);
+            stack[sp].Ld = normalize(vec4(lightPosition, stack[sp].hit.w) - stack[sp].hit); // TODO: Check if this can be optimized; Is this necessary?
+            sp++;
+
+            if(sp < MAX_TRACE) {
                 stack[sp].origin = stack[sp-1].hit;
                 stack[sp].dir = reflect(stack[sp-1].dir, stack[sp-1].N);
             }
-
-            getLocal(stack[sp].origin, stack[sp].dir, stack[sp].h, stack[sp].localColor, stack[sp].hit, stack[sp].N);
-            // stack[sp].Ld = normalize(vec4(lightPosition, p.w) - p); // TODO: Check if this can be optimized; Is this necessary?
-            sp++;
         }
 
         if(sp == 0)
@@ -490,13 +491,17 @@ vec4 trace(vec4 origin, vec4 dir)
 
         vec4 currentColor = vec4(0, 0, 0, 1);
 
-        for(;sp >= 0; sp--) {
-            currentColor = directIllumination(stack[sp].localColor, stack[sp].hit, stack[sp].N, -stack[sp].dir) + currentColor;
+        float fresnel;
+        for(--sp; sp >= 0; sp--) {
+            fresnel = fresnelTerm(halfVector(stack[sp].dir, stack[sp].Ld) ,stack[sp].Ld);
+
+            currentColor = directIllumination(stack[sp].localColor, stack[sp].hit, stack[sp].N, -stack[sp].dir) + currentColor * fresnel; 
         }
 
         return currentColor;
     }
 
+    // TP 1
     else {
         if (firstIntersection(origin, dir, hl)) {
 		    getLocal(origin, dir, hl, localColor, hit, N);
