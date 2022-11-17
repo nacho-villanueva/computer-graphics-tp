@@ -64,11 +64,7 @@ compile_commands.json
 # QtCreator local machine specific files for imported projects
 *creator.user*
 
-<<<<<<< HEAD
-**/.idea
-**/.vscode
-=======
-
 .idea/**
 .vscode/**
->>>>>>> main
+
+**/myViewer
