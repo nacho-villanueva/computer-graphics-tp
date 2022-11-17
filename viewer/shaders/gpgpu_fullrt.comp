@@ -342,11 +342,6 @@ vec4 halfVector(vec4 v, vec4 L)
     return normalize(v + L);
 }
 
-bool chi_0_halfpi (float cos_theta) 
-{
-    return 0 <= cos_theta;
-}
-
 float micro_facet_normal(float cos_theta, float alpha2)
 {
     if (cos_theta < 0)
@@ -391,7 +386,7 @@ vec4 specularLighting(vec4 color, vec4 v, vec4 n, vec4 lightDirection)
 
     if (blinnPhong)
     {
-        return  f * color * pow(max(dot(n, hv), 0), shininess) * lightIntensity; // TODO< Add phong exponent
+        return  f * color * pow(max(dot(n, hv), 0), shininess) * lightIntensity;
     }
     else
     {
@@ -404,11 +399,9 @@ vec4 specularLighting(vec4 color, vec4 v, vec4 n, vec4 lightDirection)
 
         float num = f * micro_facet_normal(cos_thetah, alpha2) * G1(cos_thetai, alpha2) * G1(cos_thetao, alpha2);
         float den = 4 * cos_thetai * cos_thetao; 
-        return (num / den) * color * lightIntensity; // TODO maybe change num and denom for AIV?
+        return (num / den) * color * lightIntensity;
     }
 }
-
-// Local illumination related functions. TODO
 
 vec4 directIllumination(vec4 color, vec4 p, vec4 n, vec4 v)
 {
