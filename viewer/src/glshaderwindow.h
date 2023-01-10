@@ -14,6 +14,8 @@
 #include <QtGui/QOpenGLFunctions>
 #include <QtGui/QScreen>
 #include <QMouseEvent>
+#include <QTimer>
+#include <QLabel>
 
 
 class glShaderWindow : public OpenGLWindow
@@ -48,12 +50,12 @@ public slots:
     void updateLightIntensity(int lightSliderValue);
     void updateShininess(int shininessSliderValue);
     void updateEta(int etaSliderValue);
+    void timerEvent();
 
 protected:
     void mousePressEvent(QMouseEvent *e);
     void mouseMoveEvent(QMouseEvent *e);
     void mouseReleaseEvent(QMouseEvent *e);
-    void timerEvent(QTimerEvent *e);
     void resizeEvent(QResizeEvent * ev);
     void wheelEvent(QWheelEvent * ev);
     void keyPressEvent(QKeyEvent* event);
@@ -67,6 +69,12 @@ private:
     void initPermTexture();
     void loadTexturesForShaders();
     void openScene();
+
+    // ReRender timer
+    QTimer *timer;
+    // Render iteration
+    int iteration;
+    QLabel* iterationLabelValue;
 
     // Are we using GPGPU?
     bool isGPGPU;

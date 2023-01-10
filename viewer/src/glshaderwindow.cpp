@@ -10,7 +10,6 @@
 #include <QRadioButton>
 #include <QCheckBox>
 #include <QSlider>
-#include <QLabel>
 // Layouts for User interface
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -32,7 +31,7 @@ glShaderWindow::glShaderWindow(QWindow *parent)
       environmentMap(0), texture(0), permTexture(0), pixels(0), mouseButton(Qt::NoButton), auxWidget(0),
       isGPGPU(true), hasComputeShaders(true), indirectLighting(true), blinnPhong(true), transparent(true), eta(1.5), lightIntensity(1.0f), shininess(50.0f), lightDistance(5.0f), groundDistance(0.78),
       shadowMap_fboId(0), shadowMap_rboId(0), shadowMap_textureId(0), fullScreenSnapshots(false), computeResult(0), 
-      m_indexBuffer(QOpenGLBuffer::IndexBuffer), ground_indexBuffer(QOpenGLBuffer::IndexBuffer)
+      m_indexBuffer(QOpenGLBuffer::IndexBuffer), ground_indexBuffer(QOpenGLBuffer::IndexBuffer), iteration(0)
 {
     // Default values you might want to tinker with
     shadowMapDimension = 2048;
@@ -43,6 +42,10 @@ glShaderWindow::glShaderWindow(QWindow *parent)
     m_fragShaderSuffix << "*.frag" << "*.fs";
     m_vertShaderSuffix << "*.vert" << "*.vs";
     m_compShaderSuffix << "*.comp" << "*.cs";
+
+    timer = new QTimer(this);
+    connect(timer, SIGNAL(timeout()), this, SLOT(timerEvent()));
+    timer->start(18);
 }
 
 glShaderWindow::~glShaderWindow()
@@ -112,6 +115,7 @@ void glShaderWindow::openSceneFromFile() {
     if (!modelName.isNull())
     {
         openScene();
+        iteration = 0;
         renderNow();
     }
 }
@@ -140,6 +144,7 @@ void glShaderWindow::openNewTexture() {
 				texture->bind(0);
             }
         }
+        iteration = 0;
         renderNow();
     }
 }
@@ -166,6 +171,7 @@ void glShaderWindow::openNewEnvMap() {
             environmentMap->setMagnificationFilter(QOpenGLTexture::Nearest);
             environmentMap->bind(1);
         }
+        iteration = 0;
         renderNow();
     }
 }
@@ -173,48 +179,56 @@ void glShaderWindow::openNewEnvMap() {
 void glShaderWindow::cookTorranceClicked()
 {
     blinnPhong = false;
+    iteration = 0;
     renderNow();
 }
 
 void glShaderWindow::inderectLightingClicked()
 {
     indirectLighting = !indirectLighting;
+    iteration = 0;
     renderNow();
 }
 
 void glShaderWindow::blinnPhongClicked()
 {
     blinnPhong = true;
+    iteration = 0;
     renderNow();
 }
 
 void glShaderWindow::transparentClicked()
 {
     transparent = true;
+    iteration = 0;
     renderNow();
 }
 
 void glShaderWindow::opaqueClicked()
 {
     transparent = false;
+    iteration = 0;
     renderNow();
 }
 
 void glShaderWindow::updateLightIntensity(int lightSliderValue)
 {
     lightIntensity = lightSliderValue / 100.0;
+    iteration = 0;
     renderNow();
 }
 
 void glShaderWindow::updateShininess(int shininessSliderValue)
 {
     shininess = shininessSliderValue;
+    iteration = 0;
     renderNow();
 }
 
 void glShaderWindow::updateEta(int etaSliderValue)
 {
     eta = etaSliderValue/100.0;
+    iteration = 0;
     renderNow();
 }
 
@@ -226,6 +240,15 @@ QWidget *glShaderWindow::makeAuxWindow()
 
     QVBoxLayout *outer = new QVBoxLayout;
     QHBoxLayout *buttons = new QHBoxLayout;
+
+    QHBoxLayout *iterationGroup = new QHBoxLayout();
+    QLabel* iterationLabel = new QLabel("Iterations:");
+    iterationLabelValue = new QLabel();
+    iterationLabelValue->setNum(iteration);
+
+    iterationGroup->addWidget(iterationLabel);
+    iterationGroup->addWidget(iterationLabelValue);
+    outer->addLayout(iterationGroup);
 
     QGroupBox *groupBox = new QGroupBox("Specular Model selection");
     QRadioButton *radio1 = new QRadioButton("Blinn-Phong");
@@ -938,6 +961,8 @@ void glShaderWindow::wheelEvent(QWheelEvent * ev)
     } else  if (matrixMoving == 2) {
         groundDistance += 0.1 * numDegrees.y();
     }
+
+    iteration = 0;
     renderNow();
 }
 
@@ -979,6 +1004,8 @@ void glShaderWindow::mouseMoveEvent(QMouseEvent *e)
 	default: break;
     }
     lastMousePosition = mousePosition;
+
+    iteration = 0;
     renderNow();
 }
 
@@ -987,14 +1014,17 @@ void glShaderWindow::mouseReleaseEvent(QMouseEvent *e)
     mouseButton = Qt::NoButton;
 }
 
-void glShaderWindow::timerEvent(QTimerEvent *e)
+void glShaderWindow::timerEvent()
 {
-
+    iteration++;
+    iterationLabelValue->setNum(iteration);
+    renderNow();
 }
 
 void glShaderWindow::keyPressEvent(QKeyEvent* event) {
     if (event->key() == Qt::Key_R) {
         initializeTransformForScene();
+        iteration = 0;
         renderNow();
     }
 }
@@ -1051,6 +1081,7 @@ void glShaderWindow::render()
         compute_program->setUniformValue("eta", eta);
         compute_program->setUniformValue("framebuffer", 2);
         compute_program->setUniformValue("colorTexture", 0);
+        compute_program->setUniformValue("iteration", iteration);
 		glBindImageTexture(2, computeResult->textureId(), 0, false, 0, GL_WRITE_ONLY, GL_RGBA32F);
         int worksize_x = nextPower2(width());
         int worksize_y = nextPower2(height());
@@ -1114,6 +1145,9 @@ void glShaderWindow::render()
     m_program->setUniformValue("shininess", shininess);
     m_program->setUniformValue("eta", eta);
     m_program->setUniformValue("radius", modelMesh->bsphere.r);
+
+    
+
 	if (m_program->uniformLocation("colorTexture") != -1) m_program->setUniformValue("colorTexture", 0);
     if (m_program->uniformLocation("envMap") != -1)  m_program->setUniformValue("envMap", 1);
 	else if (m_program->uniformLocation("permTexture") != -1)  m_program->setUniformValue("permTexture", 1);
