@@ -2,7 +2,6 @@
 
 layout(binding = 2, rgba32f) uniform image2D framebuffer;
 
-uniform int iteration;
 uniform sampler2D colorTexture;
 uniform mat4 mat_inverse;
 uniform mat4 persp_inverse;
@@ -510,16 +509,10 @@ vec4 trace(vec4 origin, vec4 dir)
     
 }
 
-float PHI = 1.61803398874989484820459;
-
-float gold_noise(in vec2 xy, in float seed) {
-    return fract(tan(distance(xy*PHI, xy) * seed)*xy.x);
-}
-
 layout (local_size_x = 8, local_size_y = 8) in;
 void main(void) {
 	// Convert local screen coordinates into world coordinates
-    ivec2 pix = ivec2(gl_GlobalInvocationID.xy); // TODO: Update this to be random
+    ivec2 pix = ivec2(gl_GlobalInvocationID.xy);
     ivec2 size = imageSize(framebuffer);
     if (pix.x >= size.x || pix.y >= size.y) {
         return;
@@ -538,12 +531,6 @@ void main(void) {
     vec4 dir = normalize((mat_inverse * worldPos));
     vec4 eye = (mat_inverse * vec4(0, 0, 0, 1));
     vec4 color = trace(eye, dir);
-    
-    // Calculate new average if not initial iteration (Note: iterations start from 0)
-    if(iteration > 0) {
-        vec4 prevColor = imageLoad(framebuffer, pix);
-        color = (iteration * prevColor + color) / (iteration + 1);
-    }
 
     imageStore(framebuffer, pix, color);
 }
