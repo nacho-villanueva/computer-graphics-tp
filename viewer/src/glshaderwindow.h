@@ -45,12 +45,14 @@ public slots:
     void cookTorranceClicked();
     void blinnPhongClicked();
     void inderectLightingClicked();
+    void randomRayClicked();
     void transparentClicked();
     void opaqueClicked();
     void updateLightIntensity(int lightSliderValue);
     void updateShininess(int shininessSliderValue);
     void updateEta(int etaSliderValue);
     void timerEvent();
+    void resetIterations();
 
 protected:
     void mousePressEvent(QMouseEvent *e);
@@ -109,6 +111,7 @@ private:
     bool blinnPhong;
     bool transparent;
     bool indirectLighting;
+    bool randomRays;
     float eta;
     float lightIntensity;
     float shininess;

@@ -1,4 +1,5 @@
 #include "glshaderwindow.h"
+#include <math.h>
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QPixmap>
@@ -22,6 +23,29 @@
 #include "bvh/bvh.hpp"
 #include "bvh/triangle.hpp"
 
+float* haltonSequence() {
+    float seq[256];
+    float n = 0;
+    float d = 1;
+    float x = 0;
+    float y = 0;
+    for(int b = 0; b < 256; b++) {
+        x = d - n;
+        if(x == 1) {
+            n = 1;
+            d *= b;
+        }
+        else {
+            y = floor(d / b);
+            while(x <= y) {
+                y = floor(y / b);
+            } 
+            n = (b + 1) * y - x;
+        }
+        seq[b] = n / d;
+    } 
+}
+
 glShaderWindow::glShaderWindow(QWindow *parent)
 // Initialize obvious default values here (e.g. 0 for pointers)
     : OpenGLWindow(parent), modelMesh(0),
@@ -31,7 +55,7 @@ glShaderWindow::glShaderWindow(QWindow *parent)
       environmentMap(0), texture(0), permTexture(0), pixels(0), mouseButton(Qt::NoButton), auxWidget(0),
       isGPGPU(true), hasComputeShaders(true), indirectLighting(true), blinnPhong(true), transparent(true), eta(1.5), lightIntensity(1.0f), shininess(50.0f), lightDistance(5.0f), groundDistance(0.78),
       shadowMap_fboId(0), shadowMap_rboId(0), shadowMap_textureId(0), fullScreenSnapshots(false), computeResult(0), 
-      m_indexBuffer(QOpenGLBuffer::IndexBuffer), ground_indexBuffer(QOpenGLBuffer::IndexBuffer), iteration(0)
+      m_indexBuffer(QOpenGLBuffer::IndexBuffer), ground_indexBuffer(QOpenGLBuffer::IndexBuffer), iteration(0), randomRays(true)
 {
     // Default values you might want to tinker with
     shadowMapDimension = 2048;
@@ -115,7 +139,7 @@ void glShaderWindow::openSceneFromFile() {
     if (!modelName.isNull())
     {
         openScene();
-        iteration = 0;
+        resetIterations();
         renderNow();
     }
 }
@@ -144,7 +168,7 @@ void glShaderWindow::openNewTexture() {
 				texture->bind(0);
             }
         }
-        iteration = 0;
+        resetIterations();
         renderNow();
     }
 }
@@ -171,64 +195,76 @@ void glShaderWindow::openNewEnvMap() {
             environmentMap->setMagnificationFilter(QOpenGLTexture::Nearest);
             environmentMap->bind(1);
         }
-        iteration = 0;
+        resetIterations();
         renderNow();
     }
+}
+
+void glShaderWindow::resetIterations() {
+    iteration = 0;
+    iterationLabelValue->setNum(iteration);
 }
 
 void glShaderWindow::cookTorranceClicked()
 {
     blinnPhong = false;
-    iteration = 0;
+    resetIterations();
     renderNow();
 }
 
 void glShaderWindow::inderectLightingClicked()
 {
     indirectLighting = !indirectLighting;
-    iteration = 0;
+    resetIterations();
+    renderNow();
+}
+
+void glShaderWindow::randomRayClicked()
+{
+    randomRays = !randomRays;
+    resetIterations();
     renderNow();
 }
 
 void glShaderWindow::blinnPhongClicked()
 {
     blinnPhong = true;
-    iteration = 0;
+    resetIterations();
     renderNow();
 }
 
 void glShaderWindow::transparentClicked()
 {
     transparent = true;
-    iteration = 0;
+    resetIterations();
     renderNow();
 }
 
 void glShaderWindow::opaqueClicked()
 {
     transparent = false;
-    iteration = 0;
+    resetIterations();
     renderNow();
 }
 
 void glShaderWindow::updateLightIntensity(int lightSliderValue)
 {
     lightIntensity = lightSliderValue / 100.0;
-    iteration = 0;
+    resetIterations();
     renderNow();
 }
 
 void glShaderWindow::updateShininess(int shininessSliderValue)
 {
     shininess = shininessSliderValue;
-    iteration = 0;
+    resetIterations();
     renderNow();
 }
 
 void glShaderWindow::updateEta(int etaSliderValue)
 {
     eta = etaSliderValue/100.0;
-    iteration = 0;
+    resetIterations();
     renderNow();
 }
 
@@ -342,6 +378,18 @@ QWidget *glShaderWindow::makeAuxWindow()
     hboxIl->addWidget(ilLabel);
     hboxIl->addWidget(ilCheckbox);
     outer->addLayout(hboxIl);
+
+    // Toggle Random Rays
+    QLabel* rrLabel = new QLabel("Random Rays: ");
+    QCheckBox* rrCheckbox = new QCheckBox();
+    rrCheckbox->setChecked(true);
+    QHBoxLayout *hboxRr = new QHBoxLayout;
+
+    connect(rrCheckbox, SIGNAL(clicked()), this, SLOT(randomRayClicked()));
+
+    hboxRr->addWidget(rrLabel);
+    hboxRr->addWidget(rrCheckbox);
+    outer->addLayout(hboxRr);
 
 
     auxWidget->setLayout(outer);
@@ -962,7 +1010,7 @@ void glShaderWindow::wheelEvent(QWheelEvent * ev)
         groundDistance += 0.1 * numDegrees.y();
     }
 
-    iteration = 0;
+    resetIterations();
     renderNow();
 }
 
@@ -1005,7 +1053,7 @@ void glShaderWindow::mouseMoveEvent(QMouseEvent *e)
     }
     lastMousePosition = mousePosition;
 
-    iteration = 0;
+    resetIterations();
     renderNow();
 }
 
@@ -1016,15 +1064,17 @@ void glShaderWindow::mouseReleaseEvent(QMouseEvent *e)
 
 void glShaderWindow::timerEvent()
 {
-    iteration++;
-    iterationLabelValue->setNum(iteration);
-    renderNow();
+    if(randomRays) {
+        iteration++;
+        iterationLabelValue->setNum(iteration);
+        renderNow();
+    }
 }
 
 void glShaderWindow::keyPressEvent(QKeyEvent* event) {
     if (event->key() == Qt::Key_R) {
         initializeTransformForScene();
-        iteration = 0;
+        resetIterations();
         renderNow();
     }
 }
@@ -1075,6 +1125,7 @@ void glShaderWindow::render()
         compute_program->setUniformValue("lightIntensity", 1.0f);
         compute_program->setUniformValue("blinnPhong", blinnPhong);
         compute_program->setUniformValue("renderIndirectLighting", indirectLighting);
+        compute_program->setUniformValue("randomRays", randomRays);
         compute_program->setUniformValue("transparent", transparent);
         compute_program->setUniformValue("lightIntensity", lightIntensity);
         compute_program->setUniformValue("shininess", shininess);

@@ -10,6 +10,7 @@ uniform float lightIntensity;
 uniform vec3 lightPosition;
 uniform bool blinnPhong;
 uniform bool renderIndirectLighting;
+uniform bool randomRays;
 uniform bool transparent;
 uniform float shininess;
 uniform float eta;
@@ -413,7 +414,7 @@ vec4 directIllumination(vec4 color, vec4 p, vec4 n, vec4 v)
 	// v: incoming viewing direction. Points towards the eye.
 
     vec4 lightDirection = normalize(vec4(lightPosition, p.w) - p);
-    if(dot(n, lightDirection) < 0 || isIntersected(p + n * 0.01, lightDirection)) {
+    if(dot(n, lightDirection) < 0 || isIntersected(p + n * 0.001, lightDirection)) {
         return ambientLighting(color);
     }
 
@@ -516,8 +517,20 @@ float gold_noise(in vec2 xy, in float seed) {
 layout (local_size_x = 8, local_size_y = 8) in;
 void main(void) {
 	// Convert local screen coordinates into world coordinates
-    ivec2 pix = ivec2(gl_GlobalInvocationID.xy); // TODO: Update this to be random
+    ivec2 ipix = ivec2(gl_GlobalInvocationID.xy);   
     ivec2 size = imageSize(framebuffer);
+
+    vec2 pix;
+    if(randomRays){
+        float fx = clamp(ipix.x + (gold_noise(ipix, iteration) - 0.5) / 10, 0, size.x);
+        float fy = clamp(ipix.y + (gold_noise(ipix, iteration + 1) - 0.5) / 10, 0, size.y);
+        pix = vec2(fx, fy);
+    }
+    else {
+        pix = ipix;
+    }
+    
+    
     if (pix.x >= size.x || pix.y >= size.y) {
         return;
     }
@@ -538,9 +551,9 @@ void main(void) {
     
     // Calculate new average if not initial iteration (Note: iterations start from 0)
     if(iteration > 0) {
-        vec4 prevColor = imageLoad(framebuffer, pix);
+        vec4 prevColor = imageLoad(framebuffer, ipix);
         color = (iteration * prevColor + color) / (iteration + 1);
     }
 
-    imageStore(framebuffer, pix, color);
+    imageStore(framebuffer, ipix, color);
 }
