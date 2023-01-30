@@ -25,7 +25,7 @@
 
 // Code taken from: 
 // https://stackoverflow.com/questions/42661304/implementing-4-dimensional-halton-sequence
-float haltonSequence(int index, int base){
+float haltonSequenceIndex(int index, int base){
   float f = 1, r = 0;
   while(index > 0){
     f = f/base;
@@ -44,7 +44,7 @@ glShaderWindow::glShaderWindow(QWindow *parent)
       environmentMap(0), texture(0), permTexture(0), pixels(0), mouseButton(Qt::NoButton), auxWidget(0),
       isGPGPU(true), hasComputeShaders(true), indirectLighting(true), blinnPhong(true), transparent(true), eta(1.5), lightIntensity(1.0f), shininess(50.0f), lightDistance(5.0f), groundDistance(0.78),
       shadowMap_fboId(0), shadowMap_rboId(0), shadowMap_textureId(0), fullScreenSnapshots(false), computeResult(0), 
-      m_indexBuffer(QOpenGLBuffer::IndexBuffer), ground_indexBuffer(QOpenGLBuffer::IndexBuffer), iteration(0), randomRays(true)
+      m_indexBuffer(QOpenGLBuffer::IndexBuffer), ground_indexBuffer(QOpenGLBuffer::IndexBuffer), iteration(0), randomRays(true), useHaltonSequence(true), debugConvergence(false)
 {
     // Default values you might want to tinker with
     shadowMapDimension = 2048;
@@ -55,6 +55,11 @@ glShaderWindow::glShaderWindow(QWindow *parent)
     m_fragShaderSuffix << "*.frag" << "*.fs";
     m_vertShaderSuffix << "*.vert" << "*.vs";
     m_compShaderSuffix << "*.comp" << "*.cs";
+
+    // Populate Halton Sequence
+    for(int i = 0; i < 256; i++) {
+        haltonSequence[i] = QVector2D(haltonSequenceIndex(i, 2),haltonSequenceIndex(i, 3));
+    }
 
     timer = new QTimer(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(timerEvent()));
@@ -211,6 +216,18 @@ void glShaderWindow::inderectLightingClicked()
 void glShaderWindow::randomRayClicked()
 {
     randomRays = !randomRays;
+    resetIterations();
+    renderNow();
+}
+
+void glShaderWindow::haltonSequenceClicked() {
+    useHaltonSequence = !useHaltonSequence;
+    resetIterations();
+    renderNow();
+}
+
+void glShaderWindow::debugConvergenceClicked(){
+    debugConvergence = !debugConvergence;
     resetIterations();
     renderNow();
 }
@@ -380,6 +397,30 @@ QWidget *glShaderWindow::makeAuxWindow()
     hboxRr->addWidget(rrCheckbox);
     outer->addLayout(hboxRr);
 
+    // Toggle Halton Sequence
+    QLabel* hsLabel = new QLabel("Halton Sequence: ");
+    QCheckBox* hsCheckbox = new QCheckBox();
+    hsCheckbox->setChecked(true);
+    QHBoxLayout *hboxHs = new QHBoxLayout;
+
+    connect(hsCheckbox, SIGNAL(clicked()), this, SLOT(haltonSequenceClicked()));
+
+    hboxHs->addWidget(hsLabel);
+    hboxHs->addWidget(hsCheckbox);
+    outer->addLayout(hboxHs);
+
+    // Toggle Debug Convergence
+    QLabel* dcLabel = new QLabel("Debug Convergence (Pixels converged will turn green): ");
+    QCheckBox* dcCheckbox = new QCheckBox();
+    dcCheckbox->setChecked(false);
+    QHBoxLayout *hboxdc = new QHBoxLayout;
+
+    connect(dcCheckbox, SIGNAL(clicked()), this, SLOT(debugConvergenceClicked()));
+
+    hboxdc->addWidget(dcLabel);
+    hboxdc->addWidget(dcCheckbox);
+    outer->addLayout(hboxdc);
+
 
     auxWidget->setLayout(outer);
     return auxWidget;
@@ -393,6 +434,7 @@ void glShaderWindow::createSSBO()
     const std::vector<Triangle>& triangles = bvh.getTriangles();
 
 	glGenBuffers(5, ssbo);
+
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[0]);
     // TODO: test if 4 float alignment works better
     glBufferData(GL_SHADER_STORAGE_BUFFER, modelMesh->vertices.size() * sizeof(trimesh::point), &(modelMesh->vertices.front()), GL_STATIC_READ);
@@ -412,6 +454,12 @@ void glShaderWindow::createSSBO()
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo[2]);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, ssbo[3]);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, ssbo[4]);
+
+
+    glGenBuffers(1, &varianceBuffer);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, varianceBuffer);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, modelMesh->colors.size() * sizeof(trimesh::Color), &(modelMesh->colors.front()), GL_STATIC_READ);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, varianceBuffer);
 }
 
 void glShaderWindow::bindSceneToProgram()
@@ -1115,13 +1163,17 @@ void glShaderWindow::render()
         compute_program->setUniformValue("blinnPhong", blinnPhong);
         compute_program->setUniformValue("renderIndirectLighting", indirectLighting);
         compute_program->setUniformValue("randomRays", randomRays);
+        compute_program->setUniformValue("useHaltonSequence", useHaltonSequence);
         compute_program->setUniformValue("transparent", transparent);
         compute_program->setUniformValue("lightIntensity", lightIntensity);
         compute_program->setUniformValue("shininess", shininess);
         compute_program->setUniformValue("eta", eta);
         compute_program->setUniformValue("framebuffer", 2);
+        compute_program->setUniformValue("variancebuffer", 6);
         compute_program->setUniformValue("colorTexture", 0);
         compute_program->setUniformValue("iteration", iteration);
+        compute_program->setUniformValue("debugConvergence", debugConvergence);
+        compute_program->setUniformValueArray("haltonSequence", haltonSequence, 256);
 		glBindImageTexture(2, computeResult->textureId(), 0, false, 0, GL_WRITE_ONLY, GL_RGBA32F);
         int worksize_x = nextPower2(width());
         int worksize_y = nextPower2(height());

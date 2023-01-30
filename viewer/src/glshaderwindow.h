@@ -16,6 +16,7 @@
 #include <QMouseEvent>
 #include <QTimer>
 #include <QLabel>
+#include <QVector2D>
 
 
 class glShaderWindow : public OpenGLWindow
@@ -44,10 +45,12 @@ public slots:
     void setWindowSize(const QString& size);
     void cookTorranceClicked();
     void blinnPhongClicked();
-    void inderectLightingClicked();
+    void inderectLightingClicked(); 
     void randomRayClicked();
+    void haltonSequenceClicked();
     void transparentClicked();
     void opaqueClicked();
+    void debugConvergenceClicked();
     void updateLightIntensity(int lightSliderValue);
     void updateShininess(int shininessSliderValue);
     void updateEta(int etaSliderValue);
@@ -107,16 +110,21 @@ private:
     int compute_groupsize_y;
     // ComputeShader:
     GLuint ssbo[5];
+    GLuint varianceBuffer;
     // Parameters controlled by UI
     bool blinnPhong;
     bool transparent;
     bool indirectLighting;
     bool randomRays;
+    bool useHaltonSequence;
     float eta;
     float lightIntensity;
     float shininess;
     float lightDistance;
     float groundDistance;
+    bool debugConvergence;
+
+    QVector2D haltonSequence[256];
 
 
     // OpenGL variables encapsulated by Qt
