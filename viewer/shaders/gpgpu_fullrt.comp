@@ -351,9 +351,9 @@ float micro_facet_normal(float cos_theta, float alpha2)
         return 0;
     }
 
-    float term_1 = M_1_PI * pow(cos_theta, -4);
+    float term_1 = M_1_PI * (1/pow(cos_theta, 4));
 
-    float tan2_theta = pow(cos_theta, -2) - 1;
+    float tan2_theta = 1/pow(cos_theta, 2) - 1;
     float term_2 = alpha2 / pow(alpha2 + tan2_theta, 2);
 
     return term_1 * term_2;
@@ -361,8 +361,14 @@ float micro_facet_normal(float cos_theta, float alpha2)
 
 float G1(float cos_theta, float alpha2) 
 {
-    float tan2_theta = pow(cos_theta, -2) - 1;
-    return 2 / (1 + sqrt(1 + alpha2 * tan2_theta));
+
+    float tan2_theta = 1/pow(cos_theta, 2) - 1;
+
+    
+    float root = 1 + alpha2 * tan2_theta;
+    if(root < 0)
+        return 1;
+    return 2 / (1 + sqrt(root));
 }
 
 float fresnelTerm(vec4 hv, vec4 lightDirection)
@@ -400,7 +406,8 @@ vec4 specularLighting(vec4 color, vec4 v, vec4 n, vec4 lightDirection)
         float cos_thetao = dot(v, n);
 
         float num = f * micro_facet_normal(cos_thetah, alpha2) * G1(cos_thetai, alpha2) * G1(cos_thetao, alpha2);
-        float den = 4 * cos_thetai * cos_thetao; 
+        float den = 4 * cos_thetai * cos_thetao;
+
         return (num / den) * color * lightIntensity;
     }
 }
@@ -490,8 +497,11 @@ vec4 trace(vec4 origin, vec4 dir)
         for(--sp; sp >= 0; sp--) {
             fresnel = fresnelTerm(halfVector(stack[sp].dir, stack[sp].Ld) ,stack[sp].Ld);
 
-            currentColor = directIllumination(stack[sp].localColor, stack[sp].hit, stack[sp].N, -stack[sp].dir) + currentColor * fresnel; 
+            currentColor = directIllumination(stack[sp].localColor, stack[sp].hit, stack[sp].N, -stack[sp].dir) + currentColor * fresnel;
+
         }
+
+        
 
         return currentColor;
     }
@@ -548,7 +558,7 @@ void main(void) {
     vec4 dir = normalize((mat_inverse * worldPos));
     vec4 eye = (mat_inverse * vec4(0, 0, 0, 1));
     vec4 color = trace(eye, dir);
-    
+
     // Calculate new average if not initial iteration (Note: iterations start from 0)
     if(iteration > 0) {
         vec4 prevColor = imageLoad(framebuffer, ipix);

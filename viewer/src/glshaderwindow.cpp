@@ -23,27 +23,16 @@
 #include "bvh/bvh.hpp"
 #include "bvh/triangle.hpp"
 
-float* haltonSequence() {
-    float seq[256];
-    float n = 0;
-    float d = 1;
-    float x = 0;
-    float y = 0;
-    for(int b = 0; b < 256; b++) {
-        x = d - n;
-        if(x == 1) {
-            n = 1;
-            d *= b;
-        }
-        else {
-            y = floor(d / b);
-            while(x <= y) {
-                y = floor(y / b);
-            } 
-            n = (b + 1) * y - x;
-        }
-        seq[b] = n / d;
-    } 
+// Code taken from: 
+// https://stackoverflow.com/questions/42661304/implementing-4-dimensional-halton-sequence
+float haltonSequence(int index, int base){
+  float f = 1, r = 0;
+  while(index > 0){
+    f = f/base;
+    r = r + f* (index% base);
+    index = index/base;
+  }
+  return r;
 }
 
 glShaderWindow::glShaderWindow(QWindow *parent)
