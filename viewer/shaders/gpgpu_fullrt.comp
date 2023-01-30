@@ -1,7 +1,7 @@
 #version 430 core
 
 layout(binding = 2, rgba32f) uniform image2D framebuffer;
-layout(binding = 6, rgba32f) uniform image2D variancebuffer;
+// layout(binding = 6, rgba32f) uniform image2D variancebuffer;
 
 uniform int iteration;
 uniform sampler2D colorTexture;
@@ -579,10 +579,6 @@ void main(void) {
     if(iteration > 0) {
         vec4 prevColor = imageLoad(framebuffer, ipix);
         color = (iteration * prevColor + color) / (iteration + 1);
-        // color = imageLoad(variancebuffer, ipix);
-    }
-    else {
-        imageStore(variancebuffer, ipix, vec4(1,0,0,1));
     }
 
     imageStore(framebuffer, ipix, color);
