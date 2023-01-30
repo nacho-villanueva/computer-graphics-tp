@@ -579,12 +579,10 @@ void main(void) {
     if(iteration > 0) {
         vec4 prevColor = imageLoad(framebuffer, ipix);
         color = (iteration * prevColor + color) / (iteration + 1);
-
-        
-        color = imageLoad(variancebuffer, ipix);
+        // color = imageLoad(variancebuffer, ipix);
     }
     else {
-        imageStore(variancebuffer, ipix,  vec4(1, 0, 0, 1));
+        imageStore(variancebuffer, ipix, vec4(1,0,0,1));
     }
 
     imageStore(framebuffer, ipix, color);

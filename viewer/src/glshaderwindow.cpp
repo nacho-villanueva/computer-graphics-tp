@@ -455,11 +455,12 @@ void glShaderWindow::createSSBO()
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, ssbo[3]);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, ssbo[4]);
 
-
-    glGenBuffers(1, &varianceBuffer);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, varianceBuffer);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, modelMesh->colors.size() * sizeof(trimesh::Color), &(modelMesh->colors.front()), GL_STATIC_READ);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, varianceBuffer);
+    // TODO: Doesnt work
+    // void * varianceBufferMalloc = malloc(modelMesh->colors.size() * sizeof(trimesh::Color));
+    // glGenBuffers(1, &varianceBuffer);
+    // glBindBuffer(GL_SHADER_STORAGE_BUFFER, varianceBuffer);
+    // glBufferData(GL_SHADER_STORAGE_BUFFER, modelMesh->colors.size() * sizeof(trimesh::Color), varianceBufferMalloc, GL_STATIC_DRAW);
+    // glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 10, varianceBuffer);
 }
 
 void glShaderWindow::bindSceneToProgram()
